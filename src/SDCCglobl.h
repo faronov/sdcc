@@ -287,6 +287,7 @@ struct options
     int stack_size;             /* MCS51/DS390 - Tells the linker to allocate this space for stack */
     int acall_ajmp;             /* MCS51 - Use acall/ajmp instead of lcall/ljmp */
     int no_ret_without_call;    /* MCS51 - Do not use ret independent of acall/lcall */
+    int xdata_ownership;        /* MCS51 - emit XDATA ownership without changing allocation */
     int use_non_free;           /* Search / include non-free licensed libraries and header files */
     /* starting address of the segments */
     int xstack_loc;             /* initial location of external stack */

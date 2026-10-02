@@ -135,6 +135,124 @@ emitDebugSym (struct dbuf_s *oBuf, symbol * sym)
 }
 
 /*-----------------------------------------------------------------*/
+/* XDATA ownership - describe allocations without changing them   */
+/*-----------------------------------------------------------------*/
+static struct dbuf_s xdataOwnership;
+static bool xdataOwnershipFirst;
+
+static void
+xdataOwnershipString (struct dbuf_s *buf, const char *text)
+{
+  const unsigned char *p = (const unsigned char *) text;
+
+  if (!text)
+    {
+      dbuf_append_str (buf, "null");
+      return;
+    }
+  dbuf_append_char (buf, '"');
+  for (; *p; p++)
+    {
+      if (*p == '"' || *p == '\\')
+        dbuf_append_char (buf, '\\');
+      if (*p < 32 || *p >= 127)
+        dbuf_printf (buf, "\\u%04x", *p);
+      else
+        dbuf_append_char (buf, *p);
+    }
+  dbuf_append_char (buf, '"');
+}
+
+static void
+emitXdataOwnership (memmap *map, symbol *sym)
+{
+  symbol *owner = sym->localof;
+  const char *kind;
+  struct dbuf_s key;
+
+  if (!TARGET_IS_MCS51 || !options.xdata_ownership ||
+      (map != xdata && map != xidata && map != x_abs))
+    return;
+
+  /* Ownership is not an activation-lifetime or an overlay permission.
+     Keep retained objects and caller-written arguments distinct. */
+  if (IS_STATIC (sym->etype))
+    kind = owner ? "STATIC_LOCAL" : "FILE_STATIC";
+  else if (sym->_isparm)
+    kind = !IS_REGPARM (sym->etype) ? "PARAM_CALLER_WRITTEN" :
+           SPEC_ARGREG (sym->etype) == 1 ? "FIRST_ARGUMENT_HOME" : "REGISTER_ARGUMENT_HOME";
+  else if (sym->inlineReturn)
+    kind = "INLINE_RETURN_HOME";
+  else if (sym->isitmp || sym->cdef || sym->astGenerated)
+    kind = "COMPILER_TEMP";
+  else if (owner)
+    kind = "LOCAL";
+  else
+    kind = sym->level ? "UNKNOWN" : "GLOBAL";
+
+  dbuf_append_str (&xdataOwnership, xdataOwnershipFirst ? "" : ",");
+  xdataOwnershipFirst = FALSE;
+  dbuf_append_str (&xdataOwnership, "\n{\"symbol\":");
+  xdataOwnershipString (&xdataOwnership, sym->rname);
+  dbuf_append_str (&xdataOwnership, ",\"name\":");
+  xdataOwnershipString (&xdataOwnership, sym->name);
+  dbuf_append_str (&xdataOwnership, ",\"owner\":");
+  xdataOwnershipString (&xdataOwnership, owner ? owner->name : NULL);
+  dbuf_append_str (&xdataOwnership, ",\"owner_symbol\":");
+  xdataOwnershipString (&xdataOwnership, owner ? owner->rname : NULL);
+  dbuf_append_str (&xdataOwnership, ",\"class\":");
+  xdataOwnershipString (&xdataOwnership, kind);
+  dbuf_append_str (&xdataOwnership, ",\"area\":");
+  dbuf_init (&key, 128);
+  dbuf_append (&key, map->sname, strcspn (map->sname, " \t"));
+  xdataOwnershipString (&xdataOwnership, dbuf_c_str (&key));
+  dbuf_set_length (&key, 0);
+  emitDebugSym (&key, sym);
+  dbuf_append_str (&xdataOwnership, ",\"cdb_key\":");
+  xdataOwnershipString (&xdataOwnership, dbuf_c_str (&key));
+  dbuf_destroy (&key);
+  dbuf_printf (&xdataOwnership,
+               ",\"size\":%u,\"absolute\":%s,\"address\":%u"
+               ",\"owner_reentrant\":%s,\"owner_isr\":%s,\"address_taken\":%s}",
+               (unsigned int) getSize (sym->type) + sym->flexArrayLength,
+               SPEC_ABSA (sym->etype) ? "true" : "false",
+               SPEC_ABSA (sym->etype) ? (unsigned int) SPEC_ADDR (sym->etype) : 0,
+               owner && (options.stackAuto || IFFUNC_ISREENT (owner->type)) ? "true" : "false",
+               owner && FUNC_ISISR (owner->type) ? "true" : "false",
+               sym->addrtaken ? "true" : "false");
+}
+
+static void
+writeXdataOwnership (void)
+{
+  struct dbuf_s name;
+  FILE *file;
+  bool failed;
+
+  dbuf_append_str (&xdataOwnership, "\n]}\n");
+  dbuf_init (&name, PATH_MAX);
+  dbuf_append_str (&name, dstFileName);
+  dbuf_append_str (&name, ".xdata.json");
+  file = fopen (dbuf_c_str (&name), "w");
+  if (!file)
+    {
+      werror (E_OUTPUT_FILE_OPEN_ERR, dbuf_c_str (&name), strerror (errno));
+      exit (EXIT_FAILURE);
+    }
+  failed = fwrite (dbuf_get_buf (&xdataOwnership), 1, dbuf_get_length (&xdataOwnership), file)
+           != dbuf_get_length (&xdataOwnership);
+  if (fclose (file))
+    failed = TRUE;
+  if (failed)
+    {
+      perror (dbuf_c_str (&name));
+      exit (EXIT_FAILURE);
+    }
+  dbuf_destroy (&name);
+  dbuf_destroy (&xdataOwnership);
+}
+
+/*-----------------------------------------------------------------*/
 /* emitRegularMap - emit code for maps with no special cases       */
 /*-----------------------------------------------------------------*/
 static void
@@ -338,6 +456,8 @@ emitRegularMap (memmap *map, bool addPublics, bool arFlag)
                 }
             }
         }
+
+      emitXdataOwnership (map, sym);
 
       /* if it has an absolute address then generate
          an equate for this no need to allocate space */
@@ -2274,6 +2394,14 @@ glue (void)
 
   dbuf_init (&vBuf, 4096);
   dbuf_init (&ovrBuf, 4096);
+  if (TARGET_IS_MCS51 && options.xdata_ownership)
+    {
+      dbuf_init (&xdataOwnership, 4096);
+      dbuf_append_str (&xdataOwnership, "{\"version\":1,\"module\":");
+      xdataOwnershipString (&xdataOwnership, moduleName);
+      dbuf_append_str (&xdataOwnership, ",\"objects\":[");
+      xdataOwnershipFirst = TRUE;
+    }
 
   mcs51_like = (port->general.glue_up_main &&
                 (TARGET_IS_MCS51 || TARGET_IS_DS390 || TARGET_IS_DS400));
@@ -2657,6 +2785,8 @@ glue (void)
       port->genAssemblerEnd (asmFile);
     }
   fclose (asmFile);
+  if (TARGET_IS_MCS51 && options.xdata_ownership)
+    writeXdataOwnership ();
 }
 
 /* will return 1 if the string is a part
@@ -2693,4 +2823,3 @@ isTargetKeyword (const char *s)
 
   return 0;
 }
-

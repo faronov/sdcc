@@ -53,6 +53,7 @@ static OPTION _mcs51_options[] =
     { 0, "--parms-in-bank1", &options.parms_in_bank1, "use Bank1 for parameter passing"},
     { 0, "--acall-ajmp",     &options.acall_ajmp, "Use acall/ajmp instead of lcall/ljmp" },
     { 0, "--no-ret-without-call", &options.no_ret_without_call, "Do not use ret independent of acall/lcall" },
+    { 0, "--xdata-ownership", &options.xdata_ownership, "Write XDATA ownership to <output>.xdata.json without changing allocation" },
     { 0, NULL }
   };
 

@@ -323,6 +323,8 @@ typedef struct symbol
   unsigned isind:1;                 /* is an induction variable */
   unsigned isinvariant:1;           /* is a loop invariant  */
   unsigned cdef:1;                  /* compiler defined symbol */
+  unsigned astGenerated:1;          /* storage provenance only; not a codegen flag */
+  unsigned inlineReturn:1;          /* AST temporary holding an inlined return */
   unsigned addrtaken:1;             /* address of the symbol was taken */
   unsigned isreqv:1;                /* is the register equivalent of a symbol */
   unsigned udChked:1;               /* use def checking has been already done */

@@ -385,6 +385,7 @@ replaceAstWithTemporary (ast ** treeptr)
   symbol *sym = newSymbol (genSymName (NestLevel), NestLevel);
   ast *tempvar;
 
+  sym->astGenerated = 1;
   /* Tell gatherImplicitVariables() to automatically give the
      symbol the correct type */
   sym->infertype = 1;
@@ -7290,6 +7291,7 @@ inlineTempVar (sym_link * type, long level)
   symbol *sym;
 
   sym = newSymbol (genSymName (level), level);
+  sym->astGenerated = 1;
   sym->type = copyLinkChain (type);
   sym->etype = getSpec (sym->type);
   SPEC_SCLS (sym->etype) = S_AUTO;
@@ -7430,6 +7432,7 @@ expandInlineFuncs (ast * tree, ast * block)
               /* {{inline_function_code}}, retsym                         */
 
               retsym = inlineTempVar (func->type->next, block->level);
+              retsym->inlineReturn = 1;
               SPEC_SCLS (retsym->etype) = S_FIXED;
               inlineAddDecl (retsym, block, TRUE, TRUE);
             }
@@ -8706,4 +8709,3 @@ offsetofOp (sym_link *type, ast *snd)
 
   return offsetofOp_rec (type, snd, &result_type);
 }
-
