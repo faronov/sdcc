@@ -17,6 +17,9 @@ the binary kits.
 
 See the share/sdcc/doc directory for more documentation.
 
+See xdata-ownership.txt for the opt-in MCS-51 --xdata-ownership sidecar,
+its storage classes and the distinction between ownership and lifetime.
+
 See http://sdcc.sourceforge.net/ for the latest information on sdcc.
 
 
