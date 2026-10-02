@@ -40,6 +40,13 @@ byte bar(byte first)
   return foo(local, 19);
 }
 
+byte sibling(byte first)
+{
+  volatile __xdata byte local;
+  local = first;
+  return local;
+}
+
 byte rent(byte first, byte second) __reentrant
 {
   volatile byte local;
@@ -59,5 +66,5 @@ void interrupt_owner(void) __interrupt(1)
 __xdata byte external;
 void main(void)
 {
-  global = bar(3) + rent(4, 5);
+  global = bar(3) + rent(4, 5) + sibling(6);
 }
