@@ -2,22 +2,25 @@
 
 1. SDCC fork URL: https://github.com/faronov/sdcc
 2. Base SDCC version: 4.2.0 #13081, exact Debian DFSG archive.
-3. Fork release tag: `v4.2.0-xdata-ownership.1` (publication pending).
-4. Source commit: the exact tag checkout, recorded by the external BUILDINFO.
+3. Fork release tag: `v4.2.0-xdata-ownership.1`, published.
+4. Source commit: `3ae36e48f54f787c095d5ffc77a964e59cf85652`.
 5. Linux release asset: `sdcc-4.2.0-xdata-ownership.1-linux-x86_64.tar.xz`.
-6. Release archive SHA256: pending the tag-source release build.
-7. sdcc executable SHA256: pending the tag-source release build.
+6. Release archive SHA256:
+   `1d326c551a94149be9904da5335f1f82552a43f10bfad33a3f54cb0c68c92794`.
+7. sdcc executable SHA256:
+   `48dac1fd659a36a74adfcb2166043ed33fc850deb7229e3684d414feb5c988fd`.
 8. XDATA ownership schema: 1.
-9. Compiler CI: initial package check failed; corrected CI pending.
-10. Packaged-toolchain self-test: PASS locally on the extracted pilot;
-    release-package acceptance pending.
-11. cc2530-zigbee clean download/build: NOT RUN; requires the published release.
+9. Compiler CI: PASS, run `37132323644`.
+10. Packaged-toolchain self-test: PASS, tag-source release run `37132681995`.
+11. cc2530-zigbee clean download/build: real release download/probe/offline
+    reuse PASS; the default overlay build and full CI are pending.
 12. Overlay final l_XSEG: not measured with the release; required value is 7123.
 13. Overlay full simulator release gate: NOT RUN with the release.
 14. Feature-off build unchanged: not yet rechecked for consumer integration.
-15. Source reproduction: PARTIAL; clean pilot compilation and regressions pass,
-    two-build archive comparison is mandatory in the release workflow.
-16. GPL/source distribution: REVIEW REQUIRED until source/binary assets exist.
+15. Source reproduction: PASS, two independent clean tag-source packages
+    and complete archives byte-identical in the declared release environment.
+16. GPL/source distribution: COMPLETE conventional source/binary distribution;
+    original component notices and corresponding modified source are published.
 
 ## Fork provenance and patch history
 
@@ -96,7 +99,7 @@ gate will be reported in `cc2530-zigbee/docs/XDATA_TOOLCHAIN.md`.
 The compiler modifications are GPL-2.0-or-later. GPLv3 component terms,
 Boost notices, dbuf terms and runtime linking exceptions are preserved
 separately; neither the toolchain nor its notices are relicensed as BSD.
-The exact modified source is to be published at the tag and as a release
+The exact modified source is published at the tag and as a release
 asset alongside the binary. This is conventional source distribution,
 not a legal opinion or a claim that every component has identical terms.
 

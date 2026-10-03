@@ -6,11 +6,12 @@ SDCC 4.2.0 #13081. The optional `--xdata-ownership` flag writes a schema-1
 instructions, calling conventions or the ordinary assembler/linker outputs.
 An external consumer must independently prove any physical storage reuse.
 
-The release line is `v4.2.0-xdata-ownership.N`; the first candidate is
+The release line is `v4.2.0-xdata-ownership.N`; the first published release is
 `v4.2.0-xdata-ownership.1`. This is not stock SDCC 4.2.0. The normal compiler
 version string remains unchanged; release identity is its source commit,
 archive/executable hashes, BUILDINFO and a real compilation capability probe.
-No release is claimed until the tag workflow and package checks pass.
+The [tag-source release](https://github.com/faronov/sdcc/releases/tag/v4.2.0-xdata-ownership.1)
+passed two clean byte-identical package builds and extracted-package checks.
 
 ## Source and patch history
 
