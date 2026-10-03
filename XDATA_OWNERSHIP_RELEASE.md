@@ -12,11 +12,11 @@
 8. XDATA ownership schema: 1.
 9. Compiler CI: PASS, run `37132323644`.
 10. Packaged-toolchain self-test: PASS, tag-source release run `37132681995`.
-11. cc2530-zigbee clean download/build: real release download/probe/offline
-    reuse PASS; the default overlay build and full CI are pending.
-12. Overlay final l_XSEG: not measured with the release; required value is 7123.
-13. Overlay full simulator release gate: NOT RUN with the release.
-14. Feature-off build unchanged: not yet rechecked for consumer integration.
+11. cc2530-zigbee clean download/build: real release download, default overlay,
+    independent verification and offline reuse PASS locally; full CI running.
+12. Overlay final l_XSEG: 7123, all original immutable final identities match.
+13. Overlay full simulator release gate: RUNNING, not yet PASS.
+14. Feature-off build unchanged: YES, original baseline checks passed in CI.
 15. Source reproduction: PASS, two independent clean tag-source packages
     and complete archives byte-identical in the declared release environment.
 16. GPL/source distribution: COMPLETE conventional source/binary distribution;
@@ -87,12 +87,24 @@ they are not claimed by these compiler-only tests.
 
 ## Firmware consumer, pinning and upgrades
 
-The intended consumer accepts schema 1 only and pins exact release tag,
+The consumer accepts schema 1 only and pins exact release tag,
 asset, archive SHA256, source commit and executable identity. Compiler
 development overrides must have a distinct receipt identity. An upgrade
 requires an explicit consumer change and full firmware admission, never a
-floating URL. Consumer implementation and its measured 7123-byte release
-gate will be reported in `cc2530-zigbee/docs/XDATA_TOOLCHAIN.md`.
+floating URL. Consumer implementation is published on `cc2530-zigbee` branch
+`xdata-toolchain-release`. Its actual default download/build and independent
+verification reproduce 7123 XDATA, 36 pools, 553 bytes saved, 253445 CODE,
+45 stack bytes and bank depth 8 without changing any final image identity.
+The complete simulator gate remains pending and is reported separately in
+`cc2530-zigbee/docs/XDATA_TOOLCHAIN.md`. Fresh legacy source reconstruction
+also passed the same real behavior probe with a distinct development identity.
+The current clean-checkout firmware
+[run 37135042736](https://github.com/faronov/cc2530-zigbee/actions/runs/37135042736)
+tests consumer commit `c72ee862317b261ed04aaf43548037c0cae19b01`.
+An earlier full attempt was superseded after restoring its original narrow
+artifact-publication policy, without weakening the existing policy test.
+Its completed feature-off/source checks do not constitute full simulator
+acceptance.
 
 ## Licensing and limitations
 
