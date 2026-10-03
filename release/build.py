@@ -8,6 +8,7 @@ import json
 import os
 from pathlib import Path
 import platform
+import re
 import shutil
 import subprocess
 import tarfile
@@ -52,10 +53,19 @@ def manifest(package):
     return result
 
 
+def boost_package():
+    name = subprocess.check_output(
+        ["dpkg-query", "-W", "-f=${Depends}", "libboost-dev"], text=True).strip()
+    require(re.fullmatch(r"libboost[0-9.]+-dev", name),
+            "Cannot identify the actual Boost headers package")
+    return name
+
+
 def compile_toolchain(output, revision, config, epoch):
     source, package = output / "source", output / "toolchain"
     source_tree(revision, source)
     env = dict(os.environ, LC_ALL="C", TZ="UTC", SOURCE_DATE_EPOCH=str(epoch),
+               CC="gcc", CXX="g++", AR="ar", RANLIB="ranlib", STRIP="strip",
                CFLAGS="-O2 -ffile-prefix-map=" + str(source) + "=/usr/src/sdcc",
                CXXFLAGS="-O2 -ffile-prefix-map=" + str(source) + "=/usr/src/sdcc")
     for key in ("SDCC_HOME", "SDCC_INCLUDE", "SDCC_LIB", "SDCC_ASM", "CPATH", "C_INCLUDE_PATH",
@@ -86,7 +96,13 @@ def compile_toolchain(output, revision, config, epoch):
             ("SDAS-COPYING3", "sdas/COPYING3"),
             ("BINUTILS-COPYING3", "support/sdbinutils/COPYING3")):
         shutil.copyfile(source / origin, package / name)
-    shutil.copyfile("/usr/share/doc/libboost-dev/copyright", package / "BOOST-COPYRIGHT")
+    shutil.copyfile("/usr/share/doc/" + boost_package() + "/copyright", package / "BOOST-COPYRIGHT")
+    notices = []
+    for relative in ("support/util/dbuf.c", "support/util/dbuf_string.c", "device/lib/memcpy.c"):
+        text = (source / relative).read_text()
+        require(text.startswith("/*") and "*/" in text, "Missing original notice: " + relative)
+        notices.append(relative + "\n" + text[:text.index("*/") + 2])
+    (package / "COMPONENT-NOTICES.txt").write_text("\n\n".join(notices) + "\n")
     manifest(package)
     return source, package
 
@@ -136,6 +152,11 @@ def build(output, config, reproduce):
                  for name in ("gcc", "g++", "make", "bison", "flex", "m4", "strip")}
         info = dict(config, source_commit=revision, source_date_epoch=epoch,
                     build_tools=tools, host_libc=platform.libc_ver(),
+                    build_packages=subprocess.check_output(
+                        ["dpkg-query", "-W", "-f=${binary:Package}=${Version}\n",
+                         *[p for p in (ROOT / "release/build-dependencies.txt").read_text().splitlines()
+                           if p], boost_package(), "gcc-13", "g++-13", "libc6-dev"],
+                        text=True).splitlines(),
                     host_compile_flags="-O2 -ffile-prefix-map=<source>=/usr/src/sdcc",
                     compiler_regression="PASS", compiler_regression_sha256=sha(work / "compiler-regressions.txt"),
                     archive_sha256="See the external BUILDINFO.txt; an archive cannot contain its own digest.")
@@ -146,12 +167,14 @@ def build(output, config, reproduce):
         extracted.mkdir()
         with tarfile.open(archive) as stream:
             stream.extractall(extracted, filter="data")
-        result = test(extracted / name)
+        result = test(extracted / name, source / "release/probe.c")
         write_json(work / "package-self-test.json", result)
         generated.append((archive, check_manifest(extracted / name), info, result))
     if reproduce:
         require(generated[0][1] == generated[1][1], "Independent package contents are not reproducible")
         require(sha(generated[0][0]) == sha(generated[1][0]), "Independent archives are not byte-identical")
+    require(git("rev-parse", "HEAD") == revision and not git("status", "--porcelain"),
+            "Source/build inputs changed during the build; no release assets produced")
     dist = output / "dist"
     dist.mkdir()
     archive, files, info, result = generated[0]

@@ -57,21 +57,23 @@ def run(command, cwd, env):
 def check_trace(trace, package):
     require(not re.search(r'"/(?:usr|usr/local)/(?:bin/(?:sdcc|sdcpp|sdas8051|sdld|sdar)|share/sdcc)', trace),
             "System SDCC component accessed")
-    invoked = set(re.findall(r'execve\("([^"]+)"', trace))
+    invoked = set(re.findall(r'execve\("([^"]+)"[^\n]*\)\s+= 0\b', trace))
     expected = {str(package / "bin" / name) for name in BINS[:4]}
     require(expected <= invoked, "Packaged compiler/preprocessor/assembler/linker not all exercised")
     require(all(not re.search(r"/(?:sdcc|sdcpp|sdas8051|sdld|sdar)$", path) or
                 path.startswith(str(package / "bin") + "/") for path in invoked),
             "Foreign supporting binary invoked")
+    opened = {os.path.normpath(path) for path in re.findall(
+        r'\bopen(?:at)?\([^"\n]*"([^"\n]+)"[^\n]*\)\s*=\s*\d+\b', trace)}
     for name in LIBS:
-        require(str(package / "bin/../share/sdcc/lib/large" / name) in trace or
-                str(package / "share/sdcc/lib/large" / name) in trace,
+        require(str(package / "share/sdcc/lib/large" / name) in opened,
                 "Packaged runtime lookup not observed: " + name)
-    require("stdint.h" in trace and "string.h" in trace and "8051.h" in trace,
-            "Representative packaged headers not exercised")
+    for name in ("stdint.h", "string.h", "mcs51/8051.h"):
+        require(str(package / "share/sdcc/include" / name) in opened,
+                "Packaged header lookup not observed: " + name)
 
 
-def test(package):
+def test(package, fixture=None):
     package = package.resolve()
     manifest = check_manifest(package)
     with tempfile.TemporaryDirectory(prefix="sdcc-package-probe-") as temporary:
@@ -84,11 +86,12 @@ def test(package):
         for enabled in (False, True):
             work = root / ("on" if enabled else "off")
             work.mkdir()
-            shutil.copyfile(ROOT / "release/probe.c", work / "probe.c")
-            command = [compiler, "-mmcs51", "--model-large", "--debug",
+            shutil.copyfile(fixture or ROOT / "release/probe.c", work / "probe.c")
+            command = [compiler, "-mmcs51", "--model-large", "--std-c99", "--debug",
+                       "-lliblonglong",
                        *(["--xdata-ownership"] if enabled else []), "probe.c"]
-            run(["strace", "-f", "-qq", "-e", "trace=file,process", "-o", "trace.txt", *command], work, env)
-            traces.append((work / "trace.txt").read_text())
+            run(["strace", "-ff", "-qq", "-e", "trace=file,process", "-o", "trace", *command], work, env)
+            traces.extend(path.read_text() for path in sorted(work.glob("trace.*")))
             sidecar = work / "probe.xdata.json"
             require(sidecar.exists() == enabled, "Option-off/on sidecar presence differs")
             if enabled:

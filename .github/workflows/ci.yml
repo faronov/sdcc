@@ -21,7 +21,17 @@ jobs:
           sudo apt-get update -qq
           xargs sudo apt-get install --yes --no-install-recommends < release/build-dependencies.txt
       - name: Build pristine control and patched package, regress and test extracted package
-        run: python3 -B release/build.py --output build/ci
+        run: |
+          python3 -B -m unittest discover -s release -p 'test_*.py' -v
+          python3 -B release/build.py --output build/ci
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: package-build-logs-${{ github.sha }}
+          path: |
+            build/ci/*/build.log
+            build/ci/*/compiler-regressions.txt
+          retention-days: 7
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: mcs51-package-${{ github.sha }}

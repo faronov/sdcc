@@ -132,6 +132,20 @@ def main():
         assert (a / "input.rel").read_bytes() == (b / "input.rel").read_bytes()
         rows = json.loads((b / "input.xdata.json").read_bytes())["objects"]
         assert not rows, "This fixture keeps its AST temporary out of static XDATA"
+        retained_rmw = rmw_source.replace("*advance", "* volatile advance", 1)
+        a = compile_case(args.control, root / "retained-rmw-control", retained_rmw, [])
+        off_rmw = compile_case(args.sdcc, root / "retained-rmw-off", retained_rmw, [])
+        b = compile_case(args.sdcc, root / "retained-rmw", retained_rmw, ["--xdata-ownership"])
+        for suffix in ("asm", "rel", "adb", "lst", "sym"):
+            assert (a / ("input." + suffix)).read_bytes() == (b / ("input." + suffix)).read_bytes()
+            assert (a / ("input." + suffix)).read_bytes() == (off_rmw / ("input." + suffix)).read_bytes()
+        rows = json.loads((b / "input.xdata.json").read_bytes())["objects"]
+        assert len(rows) == 1 and rows[0]["class"] == "COMPILER_TEMP", rows
+        row = rows[0]
+        assert row["owner"] == "rmw" and row["owner_symbol"] == "_rmw"
+        assert row["area"] == "XSEG" and row["size"] == 3 and not row["absolute"]
+        assert row["symbol"] + ":" in (b / "input.asm").read_text()
+        assert row["cdb_key"] in (b / "input.adb").read_text()
         blocked = root / "blocked"
         blocked.mkdir()
         (blocked / "input.c").write_text(source)

@@ -68,6 +68,10 @@ headers and the six model-large libraries. It does not include other target
 ports, device-library models, a simulator, PIC non-free files or an overlay
 allocator. The configure options are explicit in `release/version.json`.
 The archive includes a content/mode manifest and original license notices.
+The regression now also retains a real three-byte `COMPILER_TEMP`: a
+volatile pointer-valued function result in a read/modify/write expression.
+The original optimized-away temporary remains a separate negative control.
+Both fixtures compare ordinary output against the pristine compiler.
 
 The external `BUILDINFO.txt` records the archive hash; the copy inside the
 archive cannot include its own archive digest. Exact modified source is
@@ -89,3 +93,7 @@ and other upstream notices; see `COPYING`, `sdas/COPYING3`, individual source
 headers, and `doc/README.txt`. The source and binary distribution must
 preserve these component terms; this fork does not relicense them as BSD.
 The separately developed cc2530-zigbee firmware retains its existing license.
+The binary package includes the actual Boost headers package's copyright
+file (not the `libboost-dev` metapackage notice), the dbuf notice, and the
+runtime linking exception verbatim. All per-file notices remain in the
+corresponding source archive. Non-free PIC components are excluded.
