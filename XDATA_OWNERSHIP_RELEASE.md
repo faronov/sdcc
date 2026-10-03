@@ -12,10 +12,10 @@
 8. XDATA ownership schema: 1.
 9. Compiler CI: PASS, run `37132323644`.
 10. Packaged-toolchain self-test: PASS, tag-source release run `37132681995`.
-11. cc2530-zigbee clean download/build: real release download, default overlay,
-    independent verification and offline reuse PASS locally; full CI running.
+11. cc2530-zigbee clean download/build: PASS, including clean-checkout full CI,
+    independent local verification and offline reuse.
 12. Overlay final l_XSEG: 7123, all original immutable final identities match.
-13. Overlay full simulator release gate: RUNNING, not yet PASS.
+13. Overlay full simulator release gate: PASS, complete case0 reached serving.
 14. Feature-off build unchanged: YES, original baseline checks passed in CI.
 15. Source reproduction: PASS, two independent clean tag-source packages
     and complete archives byte-identical in the declared release environment.
@@ -95,16 +95,36 @@ floating URL. Consumer implementation is published on `cc2530-zigbee` branch
 `xdata-toolchain-release`. Its actual default download/build and independent
 verification reproduce 7123 XDATA, 36 pools, 553 bytes saved, 253445 CODE,
 45 stack bytes and bank depth 8 without changing any final image identity.
-The complete simulator gate remains pending and is reported separately in
-`cc2530-zigbee/docs/XDATA_TOOLCHAIN.md`. Fresh legacy source reconstruction
-also passed the same real behavior probe with a distinct development identity.
-The current clean-checkout firmware
+Fresh legacy source reconstruction also passed the same real behavior probe
+with a distinct development identity. The clean-checkout firmware
 [run 37135042736](https://github.com/faronov/cc2530-zigbee/actions/runs/37135042736)
-tests consumer commit `c72ee862317b261ed04aaf43548037c0cae19b01`.
+tested consumer commit `c72ee862317b261ed04aaf43548037c0cae19b01` and finished
+at 2026-10-03T17:24:52Z with all 122 jobs successful. The complete simulator
+gate passed all eight phases: adapter header, native/sanitized shallow/deep
+and ZCL, directed baseline, directed overlay, BTR, case2, bounded case0
+prefix and complete case0. The latter reached `serving` in 1142 steps and
+559709 peripheral stops, with peak SP `0x7B` under the `0x7C` bound.
+All nine accepted image identities remain unchanged.
+
+The full consumer command was:
+
+```sh
+make -s BOARD=lg_esl29_rev03 JOIN_SMOKE_KEY_MODE=default-tc BUILD=build/overlay \
+  S51="$PWD/build/join-simulator/sdcc-4.2.0+dfsg/sim/ucsim/s51.src/s51" \
+  test-join-smoke-overlay
+```
+
+Result: PASS. The public artifact
+`xdata-overlay-acceptance-c72ee862317b261ed04aaf43548037c0cae19b01` contains
+`image-woows15d/acceptance-g5iuauxn/acceptance.json`, SHA256
+`34711b0fe02c26a719e45ea67b4156a2f3d61e6a716d5dff82db8c44a2a05d27`.
+Exact phase timings and commands are recorded in that summary and
+`cc2530-zigbee/docs/XDATA_TOOLCHAIN.md`. This is synthetic execution of the
+unchanged non-diagnostic image, not JSN2 or hardware evidence.
+
 An earlier full attempt was superseded after restoring its original narrow
 artifact-publication policy, without weakening the existing policy test.
-Its completed feature-off/source checks do not constitute full simulator
-acceptance.
+Only the completed corrected run is counted as full acceptance.
 
 ## Licensing and limitations
 
