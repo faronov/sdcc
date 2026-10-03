@@ -86,6 +86,7 @@ def compile_toolchain(output, revision, config, epoch):
             ("SDAS-COPYING3", "sdas/COPYING3"),
             ("BINUTILS-COPYING3", "support/sdbinutils/COPYING3")):
         shutil.copyfile(source / origin, package / name)
+    shutil.copyfile("/usr/share/doc/libboost-dev/copyright", package / "BOOST-COPYRIGHT")
     manifest(package)
     return source, package
 
@@ -135,6 +136,7 @@ def build(output, config, reproduce):
                  for name in ("gcc", "g++", "make", "bison", "flex", "m4", "strip")}
         info = dict(config, source_commit=revision, source_date_epoch=epoch,
                     build_tools=tools, host_libc=platform.libc_ver(),
+                    host_compile_flags="-O2 -ffile-prefix-map=<source>=/usr/src/sdcc",
                     compiler_regression="PASS", compiler_regression_sha256=sha(work / "compiler-regressions.txt"),
                     archive_sha256="See the external BUILDINFO.txt; an archive cannot contain its own digest.")
         write_json(package / "BUILDINFO.txt", info)

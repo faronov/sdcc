@@ -1,0 +1,30 @@
+name: mcs51 compiler and package
+on:
+  push:
+    branches: [xdata-ownership-4.2]
+  pull_request:
+    branches: [xdata-ownership-4.2]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  package:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install declared build dependencies (no system SDCC)
+        run: |
+          sudo apt-get update -qq
+          xargs sudo apt-get install --yes --no-install-recommends < release/build-dependencies.txt
+      - name: Build pristine control and patched package, regress and test extracted package
+        run: python3 -B release/build.py --output build/ci
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: mcs51-package-${{ github.sha }}
+          path: build/ci/dist/*
+          if-no-files-found: error
+          retention-days: 7

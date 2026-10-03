@@ -1,0 +1,69 @@
+name: Tagged mcs51 toolchain release
+on:
+  push:
+    tags: ['v4.2.0-xdata-ownership.*']
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.ref }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Require exact declared tag source
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          python3 - <<'PY'
+          import json, os, subprocess
+          from pathlib import Path
+          config = json.loads(Path("release/version.json").read_bytes())
+          assert config["release"] == os.environ["RELEASE_TAG"], "Tag/version mismatch"
+          assert subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip() == os.environ["GITHUB_SHA"]
+          PY
+      - name: Install declared build dependencies (no system SDCC)
+        run: |
+          sudo apt-get update -qq
+          xargs sudo apt-get install --yes --no-install-recommends < release/build-dependencies.txt
+      - name: Build tagged source twice, regress and test extracted packages
+        run: python3 -B release/build.py --output build/release --reproduce
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: tagged-release-assets
+          path: build/release/dist/*
+          if-no-files-found: error
+          retention-days: 7
+  publish:
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: tagged-release-assets
+          path: dist
+      - name: Verify source/hash bindings and publish once
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          cd dist
+          sha256sum --check --strict SHA256SUMS
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          info = json.loads(Path("BUILDINFO.txt").read_bytes())
+          assert info["source_commit"] == os.environ["GITHUB_SHA"], "Foreign source artifact"
+          assert info["release"] == os.environ["RELEASE_TAG"]
+          assert info["compiler_regression"] == info["packaged_self_test"] == "PASS"
+          assert info["clean_builds"] == 2 and info["bit_reproducible"] is True
+          PY
+          gh release create "$RELEASE_TAG" --verify-tag --title "$RELEASE_TAG" \
+            --notes 'mcs51/model-large ownership metadata only. Tagged source, original licenses, BUILDINFO and checksums included. Two clean builds and extracted-package self-tests passed. No XDATA allocator or hardware-readiness claim.' \
+            ./*.tar.xz SHA256SUMS BUILDINFO.txt package-self-test.json

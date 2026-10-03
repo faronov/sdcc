@@ -1,0 +1,10 @@
+build-essential
+bison
+flex
+m4
+libboost-dev
+zlib1g-dev
+python3
+strace
+xz-utils
+git
